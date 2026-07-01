@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Self-check for block-worktree-escape.sh + worktree-setup.sh.
-# Run: bash ~/.claude/hooks/worktree-hooks.test.sh
+# Run: bash plugins/mhr-worktree/hooks/worktree-hooks.test.sh
 set -uo pipefail
 H="$(cd "$(dirname "$0")" && pwd)"
 tmp=$(mktemp -d)
