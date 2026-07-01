@@ -1,0 +1,9 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "mhr-worktree",
+  "version": "0.1.0",
+  "description": "Git worktree isolation workflow: require edits happen inside a worktree, block escaping back to the main checkout, auto-provision (bun install + skill symlinks) a worktree on entry, and tear it down on exit.",
+  "author": {
+    "name": "Marcus Hrvatin"
+  }
+}

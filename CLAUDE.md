@@ -9,10 +9,11 @@ A personal Claude Code **marketplace** — a static distribution of commands, ag
 ## Layout
 
 - `.claude-plugin/marketplace.json` — marketplace manifest. Lists plugins and their `source` paths. Edit when adding/removing a plugin.
-- `plugins/mhrvatin-tools/` — the one plugin. Its `.claude-plugin/plugin.json` is the plugin manifest; `commands/`, `agents/`, and `skills/` hold the actual content (each a Markdown file with YAML frontmatter; skills are directories containing `SKILL.md` plus reference `.md` files).
-- `hooks/` — a **standalone library** of opt-in hook scripts. Deliberately NOT bundled into the plugin and NOT wired into this repo (a plugin's hooks install all-or-nothing, which defeats per-hook opt-in). Consumed by copying a script into a target repo. See `hooks/README.md`.
+- `plugins/mhr/` — commands/agents/skills. Its `.claude-plugin/plugin.json` is the plugin manifest; `commands/`, `agents/`, and `skills/` hold the actual content (each a Markdown file with YAML frontmatter; skills are directories containing `SKILL.md` plus reference `.md` files).
+- `plugins/mhr-guardrails/`, `plugins/mhr-worktree/`, `plugins/mhr-pinning/` — themed Claude Code hook plugins. Each has `hooks/hooks.json` (the wiring, using `${CLAUDE_PLUGIN_ROOT}`) plus the hook scripts themselves. Split by theme, not bundled into one, so installing one doesn't turn on unrelated hooks.
+- `hooks/` — a **standalone library** of git pre-commit hook scripts only (Claude Code hooks live in the plugins above). No plugin delivery mechanism exists for these — they run via lefthook/`.git/hooks`, outside Claude Code entirely. Consumed by copying a script into a target repo. See `hooks/README.md`.
 
-When editing the plugin, keep three places in sync: the content files, the descriptions in `marketplace.json`, and the tables in the root `README.md`.
+When editing a plugin, keep three places in sync: the content files, the descriptions in `marketplace.json`, and the tables in the root `README.md`.
 
 ## File conventions
 
@@ -20,15 +21,15 @@ When editing the plugin, keep three places in sync: the content files, the descr
 - **Commands** (`commands/*.md`): the body IS the prompt executed when the user runs `/<name>`.
 - **Skills** (`skills/<name>/SKILL.md`): frontmatter `name` + `description`; the description's trigger conditions decide when the skill auto-activates, so write them precisely.
 
-## Two distinct hook mechanisms in `hooks/`
+## Two distinct hook mechanisms
 
 These do not interchange — wiring one as the other silently never fires:
-- **Claude Code hooks** wire into `settings.json` (`PreToolUse`/`PostToolUse`, can block a tool call).
-- **Git pre-commit hooks** wire into a git hook runner (lefthook / `.git/hooks`), scan the staged diff, `exit 1` to abort.
+- **Claude Code hooks** (in the `plugins/mhr-*` plugins) wire via `hooks/hooks.json`, `PreToolUse`/`PostToolUse`, can block a tool call.
+- **Git pre-commit hooks** (in `hooks/`) wire into a git hook runner (lefthook / `.git/hooks`), scan the staged diff, `exit 1` to abort.
 
-Some pairs enforce the same intent via both mechanisms (e.g. protected-branch commits, broad `git add`) — install one, not both. See the "Overlaps" section in `hooks/README.md`.
+Some pairs enforce the same intent via both mechanisms (e.g. protected-branch commits) — install one, not both. See the "Overlaps" section in `hooks/README.md`.
 
-Hook self-tests: `bash hooks/worktree-hooks.test.sh` (covers the worktree hooks only).
+Hook self-tests: `bash plugins/mhr-worktree/hooks/worktree-hooks.test.sh` (covers the worktree hooks only).
 
 ## Tooling assumptions baked into the prompts
 

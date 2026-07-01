@@ -1,0 +1,33 @@
+{
+  "description": "Worktree isolation: require edits inside a worktree, block reaching back into the main checkout, and provision new worktrees on entry/exit.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/require-worktree.sh\"" }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|Bash",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-worktree-escape.sh\"" }
+        ]
+      },
+      {
+        "matcher": "ExitWorktree",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/worktree-grove-down.sh\"" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "EnterWorktree",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/worktree-setup.sh\"" }
+        ]
+      }
+    ]
+  }
+}

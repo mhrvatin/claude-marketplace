@@ -1,0 +1,9 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "mhr-pinning",
+  "version": "0.1.0",
+  "description": "Blocks non-exact dependency version ranges in package.json and GitHub Actions pinned by tag/branch instead of a commit SHA.",
+  "author": {
+    "name": "Marcus Hrvatin"
+  }
+}
