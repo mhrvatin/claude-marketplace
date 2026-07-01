@@ -6,10 +6,10 @@ A personal Claude Code marketplace — commands, agents, and skills usable acros
 
 ```bash
 claude plugin marketplace add /path/to/this/checkout
-claude plugin install mhrvatin-tools@mhrvatin
+claude plugin install mhr@mhrvatin
 ```
 
-## Contents (`mhrvatin-tools`)
+## Contents (`mhr`)
 
 | Type | Name | Notes |
 |------|------|-------|
@@ -26,13 +26,20 @@ claude plugin install mhrvatin-tools@mhrvatin
 
 (The `pr` command also spawns a `pr` agent that commits, pushes, and opens the PR to the default branch.)
 
-## Hooks (`hooks/`)
+## Hooks
 
-A library of opt-in hook scripts (secrets/`git add`/force-push guards, worktree
-isolation, dep/Actions pinning, destructive-migration blocking). They're **not**
-wired into this repo or bundled into the plugin — copy a script into a target repo
-and add the wiring snippet. See [`hooks/README.md`](hooks/README.md), which splits
-them into Claude Code hooks (`settings.json`) vs. git pre-commit hooks.
+Claude Code hooks (`PreToolUse`/`PostToolUse`) are installable as themed plugins —
+opt into a theme instead of every hook at once:
+
+```bash
+claude plugin install mhr-guardrails@mhrvatin   # command-safety guards
+claude plugin install mhr-worktree@mhrvatin     # worktree isolation workflow
+claude plugin install mhr-pinning@mhrvatin      # dependency/Actions pinning
+```
+
+Git pre-commit hooks (secrets/destructive-migration/`node_modules` blocking) have
+no plugin delivery mechanism — they're a copy-paste library in `hooks/`, wired into
+a target repo's lefthook/`.git/hooks`. See [`hooks/README.md`](hooks/README.md).
 
 ## Assumptions
 

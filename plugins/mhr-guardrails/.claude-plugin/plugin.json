@@ -1,0 +1,9 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "mhr-guardrails",
+  "version": "0.1.0",
+  "description": "Command-safety PreToolUse guards: blocks npx/bunx-style runners, broad `git add`, `--no-verify`, force-push, commits on protected branches, and staging secret files.",
+  "author": {
+    "name": "Marcus Hrvatin"
+  }
+}

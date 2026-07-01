@@ -1,6 +1,6 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
-  "name": "mhrvatin-tools",
+  "name": "mhr",
   "version": "0.1.0",
   "description": "Marcus Hrvatin's personal commands, agents, and skills.",
   "author": {
