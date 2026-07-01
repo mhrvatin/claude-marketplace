@@ -1,0 +1,19 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "mhrvatin",
+  "description": "Marcus Hrvatin's personal Claude Code commands, agents, and skills.",
+  "owner": {
+    "name": "Marcus Hrvatin"
+  },
+  "plugins": [
+    {
+      "name": "mhrvatin-tools",
+      "description": "Personal workflow commands (pr, interview, todo-minor), review agents (code-reviewer, security-auditor [opus], architect-reviewer) plus working agents (sql-pro, devops-engineer, pr), and skills (test-driven-development).",
+      "author": {
+        "name": "Marcus Hrvatin"
+      },
+      "category": "workflow",
+      "source": "./plugins/mhrvatin-tools"
+    }
+  ]
+}
