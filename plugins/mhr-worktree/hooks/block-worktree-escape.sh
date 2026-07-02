@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PreToolUse(Edit|Write|MultiEdit|Bash): when the session is in a git worktree
+# PreToolUse(Edit|Write|MultiEdit|Bash|Read|Glob|Grep|NotebookEdit): when the session is in a git worktree
 # under .claude/worktrees/<name>, block touching repo files that live OUTSIDE
 # the worktree (the main checkout) and redirect back into the worktree. The
 # point of a worktree is isolation — reaching the root defeats it.
@@ -40,8 +40,18 @@ normalize() { python3 -c 'import os,sys; print(os.path.normpath(sys.argv[1]))' "
 escapes() { case "$1" in "$repo"|"$repo"/*) [[ "$1" != "$wt" && "$1" != "$wt"/* ]] ;; *) return 1 ;; esac; }
 
 case "$tool" in
-  Edit|Write|MultiEdit)
+  Edit|Write|MultiEdit|Read)
     file=$(printf '%s' "$input" | jq -r '.tool_input.file_path // empty')
+    case "$file" in /*) file=$(normalize "$file"); escapes "$file" && block "$file" ;; esac
+    ;;
+  NotebookEdit)
+    file=$(printf '%s' "$input" | jq -r '.tool_input.notebook_path // empty')
+    case "$file" in /*) file=$(normalize "$file"); escapes "$file" && block "$file" ;; esac
+    ;;
+  Glob|Grep)
+    # `path` is optional (defaults to cwd, always in-worktree) and only
+    # checked when absolute — same ponytail as Edit/Write above.
+    file=$(printf '%s' "$input" | jq -r '.tool_input.path // empty')
     case "$file" in /*) file=$(normalize "$file"); escapes "$file" && block "$file" ;; esac
     ;;
   Bash)
