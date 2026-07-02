@@ -83,24 +83,24 @@ Map scores back by index. Apply scores with **asymmetric filtering** — the div
 
 - **Score ≥ 60:** carry forward to triage normally.
 - **Score < 60, low-stakes finding:** drop — treat as noise.
-- **Score < 60, high-stakes finding (security, real performance impact, data-loss, destructive operation, user-facing contract change):** do NOT drop — route directly to **Surface** with a `(low confidence — verify)` annotation.
+- **Score < 60, high-stakes finding (security, real performance impact, data-loss, destructive operation, user-facing contract change):** do NOT drop — route directly to **Surface** with a `(low confidence — verify)` annotation. This is an explicit exception to the Surface bucket's normal criteria below — low-confidence-but-high-stakes always surfaces, regardless of whether the finding also meets (a) or (b).
 
 Findings from the project's advisory pre-push checks (above) are deterministic — skip scoring and carry them forward unchanged.
 
 Merge surviving findings (passing the score filter + pre-check). Deduplicate overlaps. Sort each into one of four buckets:
 
-- **Auto-fix** — purely mechanical: unused imports, dead code, obvious typos in strings/comments, stale references, naming nits, code-quality cleanups with no behavior change. Apply silently. **Never** auto-fix anything that changes runtime behavior, validation, or logic.
-- **Decide-and-apply** — implementation choices where one option is clearly better and the wrong one wouldn't cause a real problem (refactor shape, library/style choice, scope-creep nits, idiomatic restructuring). Pick the better option, apply it, list it in the Phase 2 PR summary so the user has an audit trail.
-- **Advisor-mediated** — non-obvious correctness calls where the right fix is ambiguous, *but the impact is not security / perf / data / user-facing contract*. Call `advisor()` with the finding and candidate fixes. If the advisor is decisive, apply and note in the recap. If the advisor is ambiguous or flags real uncertainty, promote to **Surface**. Use discretion on when to call — skip for findings where you're already confident. (Requires the `advisor` tool in this session; if not available, treat advisor-mediated findings as **Surface**.)
-- **Surface** — always escalate to the user: security impact, real performance impact (latency, memory, query count, bundle size), data-loss risk, destructive operations, user-facing contract changes, anything the advisor flagged as ambiguous.
+- **Auto-fix** — purely mechanical: unused imports, dead code, obvious typos in strings/comments, stale references, naming nits, code-quality cleanups with no behavior change. Apply silently.
+- **Fix-and-apply** — any finding with a clear, unambiguous fix: correctness bugs, missing error handling, broken logic, security issues with an obvious mitigation, performance issues with a clear solution, implementation choices where one option is clearly better. **Never defer or add a TODO — fix it now.** Apply the fix; include it in the Phase 2 PR summary. Rule of thumb: if you can write the correct fix from the code alone without asking the author, it belongs here.
+- **Advisor-mediated** — findings where the right fix is unclear or has real trade-offs. Call `advisor()` with the finding and candidate fixes. If decisive, apply and note in the recap. If ambiguous, promote to **Surface**. (If `advisor` is unavailable, treat as **Surface**.)
+- **Surface** — only when no reasonable call can be made from the code alone: (a) the change looks like it could be intentional (removing a guard, changing a default, narrowing an API) and you cannot tell from context; (b) the correct fix depends on business rules or external facts the code does not encode. Standard patterns, conventions, and best practices are yours to apply — do not surface something just because there are multiple valid approaches.
 
-After applying auto-fix and decide-and-apply items, run `just lint-fix` to apply formatting (skip for docs-only). **Don't re-run build, tests, or the project's other hooks/checks here** — the project's pre-commit and pre-push hooks run them when the Phase 2 agent commits and pushes, and that agent fixes anything that fails. Re-running them here is redundant.
+After applying auto-fix and fix-and-apply items, run `just lint-fix` to apply formatting (skip for docs-only). **Don't re-run build, tests, or the project's other hooks/checks here** — the project's pre-commit and pre-push hooks run them when the Phase 2 agent commits and pushes, and that agent fixes anything that fails. Re-running them here is redundant.
 
 ### 1e. Gate decision
 
 **If any Surface items exist:**
 
-Stop. Do NOT proceed to Phase 2 yet. Report concisely — one step back from the code, no file paths or function names, no line-by-line. For frontend findings especially, describe what the user sees or what risk it carries, not implementation mechanics. Keep each finding to 2–3 options. Order options by what you'd recommend (A first); when "do nothing / accept as-is" is a real option, include it.
+Stop. Do NOT proceed to Phase 2 yet. Surface items are things you could not fix without the user's input — frame them that way. Report concisely: what the ambiguity or intent question is, not a line-by-line diff. Keep each finding to 2–3 concrete options. Order options by what you'd recommend (A first).
 
 Format:
 
@@ -122,7 +122,7 @@ Format:
 
 When the user replies with picks, apply them, re-run lint/build per 1d, then continue to Phase 2. Do not re-gate the same findings.
 
-**Otherwise (no Surface items):** one-line summary of auto-fixes and any decide-and-apply / advisor-mediated calls, then continue to 1f.
+**Otherwise (no Surface items):** one-line summary of auto-fixes and any fix-and-apply / advisor-mediated calls, then continue to 1f.
 
 ### 1f. Doc status sync
 
@@ -157,7 +157,7 @@ Spawn the `pr` agent with this prompt:
 >
 > **From this session:** automated review passed. Include the following in the PR body — substitute concrete content for each placeholder before spawning the agent:
 > - **Auto-fixes:** [list or "none"]
-> - **Decide-and-apply choices:** [list or "none"]
+> - **Fix-and-apply choices:** [list or "none"]
 > - **Advisor-mediated calls:** [list or "none"]
 > - **User picks at gate:** [list or "none"]
 > - **Doc status updates:** [list of `file — item: old → new` or `file — item: skipped (<reason>)` lines, or "none"]
