@@ -9,7 +9,7 @@
         ]
       },
       {
-        "matcher": "Edit|Write|MultiEdit|Bash",
+        "matcher": "Edit|Write|MultiEdit|Bash|Read|Glob|Grep|NotebookEdit",
         "hooks": [
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-worktree-escape.sh\"" }
         ]

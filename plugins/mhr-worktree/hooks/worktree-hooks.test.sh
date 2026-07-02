@@ -34,6 +34,24 @@ guard() { # tool_name, tool_input(json) -> exit code, cwd=worktree
 # Edit with `..` traversal escaping the worktree -> blocked (path normalized)
 [ "$(guard Edit "$(jq -nc --arg f "$wt/../../secret.ts" '{file_path:$f}')")" = 2 ] \
   && ok "edit ..-escape blocked" || bad "edit ..-escape should block"
+# Read outside worktree -> blocked (2)
+[ "$(guard Read "$(jq -nc --arg f "$repo/packages/a.ts" '{file_path:$f}')")" = 2 ] \
+  && ok "read main-checkout blocked" || bad "read main-checkout should block"
+# Read inside worktree -> allowed (0)
+[ "$(guard Read "$(jq -nc --arg f "$wt/packages/a.ts" '{file_path:$f}')")" = 0 ] \
+  && ok "read in-worktree allowed" || bad "read in-worktree should pass"
+# NotebookEdit outside worktree -> blocked (2)
+[ "$(guard NotebookEdit "$(jq -nc --arg f "$repo/packages/nb.ipynb" '{notebook_path:$f}')")" = 2 ] \
+  && ok "notebookedit main-checkout blocked" || bad "notebookedit main-checkout should block"
+# Glob with absolute path outside worktree -> blocked (2)
+[ "$(guard Glob "$(jq -nc --arg f "$repo/packages" '{pattern:"*.ts",path:$f}')")" = 2 ] \
+  && ok "glob main-checkout blocked" || bad "glob main-checkout should block"
+# Grep with absolute path inside worktree -> allowed (0)
+[ "$(guard Grep "$(jq -nc --arg f "$wt/packages" '{pattern:"foo",path:$f}')")" = 0 ] \
+  && ok "grep in-worktree allowed" || bad "grep in-worktree should pass"
+# Glob with no path (defaults to cwd) -> allowed (0)
+[ "$(guard Glob "$(jq -nc '{pattern:"*.ts"}')")" = 0 ] \
+  && ok "glob no-path allowed" || bad "glob no-path should pass"
 # Bash cd to repo root -> blocked
 [ "$(guard Bash "$(jq -nc --arg c "cd $repo && ls" '{command:$c}')")" = 2 ] \
   && ok "bash cd-to-root blocked" || bad "bash cd-to-root should block"
