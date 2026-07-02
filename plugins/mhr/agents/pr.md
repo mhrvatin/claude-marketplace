@@ -45,13 +45,15 @@ Group changes into commits by type. One type = one commit. Don't over-split with
 
 ### 3. Branch
 
+If currently on `main`, create a feature branch before committing — you cannot commit directly to `main`:
+
 ```bash
-git checkout main
-git pull origin main
 git checkout -b <type>/<short-kebab-description>
 ```
 
 Branch prefix matches the dominant change type.
+
+If already on a non-`main` branch, stay on it — commits land there, preserving any commits already made on it ahead of `main`.
 
 ### 4. Commit
 
@@ -68,7 +70,14 @@ EOF
 )"
 ```
 
-### 5. Push and create PR
+### 5. Rebase onto origin/main
+
+Now that all changes are committed, sync with the latest `origin/main`:
+- `git fetch origin main --quiet`
+- `git rev-list --count HEAD..origin/main`
+- If count > 0: run `git rebase origin/main`. If the rebase exits non-zero (conflicts), run `git rebase --abort`, stop, and report the conflicting files — do not proceed.
+
+### 6. Push and create PR
 
 ```bash
 git push -u origin HEAD
@@ -86,7 +95,7 @@ EOF
 )"
 ```
 
-### 6. Return result
+### 7. Return result
 
 Always end your response with exactly this format so the caller can parse it:
 
