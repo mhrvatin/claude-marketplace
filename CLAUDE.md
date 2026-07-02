@@ -13,7 +13,7 @@ A personal Claude Code **marketplace** — a static distribution of commands, ag
 - `plugins/mhr-guardrails/`, `plugins/mhr-worktree/`, `plugins/mhr-pinning/` — themed Claude Code hook plugins. Each has `hooks/hooks.json` (the wiring, using `${CLAUDE_PLUGIN_ROOT}`) plus the hook scripts themselves. Split by theme, not bundled into one, so installing one doesn't turn on unrelated hooks.
 - `hooks/` — a **standalone library** of git pre-commit hook scripts only (Claude Code hooks live in the plugins above). No plugin delivery mechanism exists for these — they run via lefthook/`.git/hooks`, outside Claude Code entirely. Consumed by copying a script into a target repo. See `hooks/README.md`.
 
-When editing a plugin, keep three places in sync: the content files, the descriptions in `marketplace.json`, and the tables in the root `README.md`.
+When editing a plugin, keep four places in sync: the content files, the `version` in that plugin's `.claude-plugin/plugin.json` (bump on any behavior change — patch for fixes/wording, minor for new capabilities), the descriptions in `marketplace.json`, and the tables in the root `README.md`.
 
 ## File conventions
 
