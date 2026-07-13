@@ -1,5 +1,5 @@
 {
-  "description": "Command-safety guards for the Bash tool: package-manager runners, broad git add, protected-branch commits, secret files.",
+  "description": "Command-safety guards for the Bash tool: package-manager runners, broad git add, protected-branch commits, secret files. Also best-effort blocks reading .env files via Read, Grep, or Bash.",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,7 +8,20 @@
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/no-x-commands.sh\"" },
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/no-add-secrets.sh\"" },
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/block-protected-commits.sh\"" },
-          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-git-add.py\"" }
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-git-add.py\"" },
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/no-read-env.py\"" }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/no-read-env.py\"" }
+        ]
+      },
+      {
+        "matcher": "Grep",
+        "hooks": [
+          { "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/no-read-env.py\"" }
         ]
       }
     ]
