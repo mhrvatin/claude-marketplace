@@ -13,7 +13,7 @@ claude plugin install mhr@mhrvatin
 
 | Type | Name | Notes |
 |------|------|-------|
-| command | `pr` | Sizes the diff into a tier, fans out review agents, scores findings, applies fixes, then spawns the `pr` agent to commit/push/open the PR without waiting for input. |
+| command | `pr` | Sizes the diff into a tier, fans out review agents, scores findings, applies fixes, spawns the `pr` agent to commit/push/open the PR without waiting for input, polls CI itself and dispatches the `ci-fixer` agent (up to 2 attempts) if it goes red, then surfaces any ambiguous findings in chat last. |
 | command | `interview` | Requirements-interviewer that writes a spec section (assumes a `docs/SPEC.md`-style spec if present). |
 | command | `todo-minor` | Surfaces minor, bite-sized work items. |
 | agent | `code-reviewer` | Correctness/edge-case/test review. |
@@ -21,10 +21,11 @@ claude plugin install mhr@mhrvatin
 | agent | `architect-reviewer` | Boundaries, coupling, API/data-flow alignment. |
 | agent | `sql-pro` | SQL/Postgres + Drizzle ORM review. |
 | agent | `devops-engineer` | CI/CD, containerization, infra. |
-| agent | `pr` | Commits, branches, pushes, opens the PR, posts ambiguous review findings as PR comments, and watches CI to resolution (auto-fixing red checks, up to 2 attempts); spawned by the `pr` command. |
+| agent | `pr` | Commits, branches, pushes, and opens the PR; spawned by the `pr` command, which then watches CI itself and surfaces ambiguous findings in chat once CI resolves. |
+| agent | `ci-fixer` | Diagnoses and fixes a red CI check on the current branch, pushes a new commit; spawned by the `pr` command's own CI poll loop when a check fails. |
 | skill | `test-driven-development` | TDD discipline + supporting refs. |
 
-(The `pr` command also spawns a `pr` agent that commits, pushes, opens the PR, posts findings as comments, and watches CI to resolution.)
+(The `pr` command spawns a `pr` agent that just commits, pushes, and opens the PR, then polls CI itself in the main session, dispatches a `ci-fixer` agent to fix any red checks, and only afterward surfaces ambiguous review findings in chat for you to decide on.)
 
 ## Hooks
 

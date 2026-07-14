@@ -1,4 +1,4 @@
-Ship all current changes to main via a pull request, fully automated: an agent panel reviews the diff, mechanical/clear-cut findings are fixed before shipping, the PR opens without waiting for you, ambiguous findings land as PR comments instead of a chat gate, and CI is watched through to a resolved state (fixed automatically if it goes red, up to 2 attempts).
+Ship all current changes to main via a pull request, fully automated: an agent panel reviews the diff, mechanical/clear-cut findings are fixed before shipping, the PR opens without waiting for you, CI is watched through to a resolved state (fixed automatically if it goes red, up to 2 attempts), and only then are any ambiguous findings surfaced to you in chat — held back so they don't distract from or block the ship.
 
 ---
 
@@ -94,16 +94,16 @@ Merge surviving findings (passing the score filter + pre-check). Deduplicate ove
 
 After applying auto-fix and fix-and-apply items, run `just lint-fix` to apply formatting (skip for docs-only). **Don't re-run build, tests, or the project's other hooks/checks here** — the project's pre-commit and pre-push hooks run them when the Phase 2 agent commits and pushes, and that agent fixes anything that fails. Re-running them here is redundant.
 
-### 1e. Prepare Surface items for posting (no gate)
+### 1e. Hold Surface items for later
 
-Surface items no longer block PR creation. For each Surface finding, prepare a short comment payload the Phase 2 agent will post to the PR:
+Surface items no longer block or annotate PR creation — they aren't posted as PR comments. For each Surface finding, prepare a short chat payload to show the user **after CI resolves** (Phase 4):
 
 - **Anchor:** `file:line` if the finding has one (from the reviewing agent's `- file: <path>:<line>` output), else none.
-- **Body:** one-sentence summary of the ambiguity/intent question, plus 2–3 concrete options (same bar as before: order by recommendation, A first, "leave as-is" is a valid option). No line-by-line diff dumps — keep it as tight as the old chat-gate format was.
+- **Body:** one-sentence summary of the ambiguity/intent question, plus 2–3 concrete options (order by recommendation, A first, "leave as-is" is a valid option). No line-by-line diff dumps — keep it tight.
 
-Carry this list (with anchors) into Phase 2 — the agent posts each as a plain PR comment (prefixed with its `file:line` anchor when it has one). True inline review comments aren't available here since they require `gh api`, which the repo's guard hook blocks outright.
+Hold this list in memory for Phase 4 — do not pass it to the Phase 2 agent.
 
-One-line summary of auto-fixes, fix-and-apply / advisor-mediated calls, and how many Surface items will be posted as comments, then continue to 1f. Do not stop here — proceed straight to 1f and Phase 2.
+One-line summary of auto-fixes, fix-and-apply / advisor-mediated calls, and how many Surface items are being held for the end, then continue to 1f. Do not stop here — proceed straight to 1f and Phase 2.
 
 ### 1f. Doc status sync
 
@@ -126,7 +126,7 @@ Keep a short list of the doc edits made — applied (`file — item: old → new
 
 ---
 
-## Phase 2: Create the PR, post findings, watch CI
+## Phase 2: Create the PR
 
 Spawn the `pr` agent with this prompt:
 
@@ -144,14 +144,38 @@ Spawn the `pr` agent with this prompt:
 >
 > Lint verified.
 >
-> **Surface findings to post as PR comments** (do not gate on these — the PR ships regardless): [list each as `file:line — summary + options (A/B/C)`, or "none". If none, skip step 7 in your workflow entirely.]
->
-> After the PR is open and findings are posted, watch CI through to resolution per your workflow (steps 8–9), fixing up to 2 times if it goes red.
+> Once the PR is open, hand back — you do not post comments and you do not watch CI.
 
 When the agent finishes:
-- If response contains `PR_URL:`, report **"PR created"** + URL, a brief recap of fixes, how many Surface comments were posted, and the `CI_STATUS`:
-  - `green` → "CI green — all done."
-  - `red` → summarize what was tried across both fix attempts and the remaining failure, so the user knows what needs their attention.
-  - `unresolved` → note that CI status couldn't be determined (e.g. no checks configured) and the PR is otherwise ready.
-- If "Nothing to ship.", relay it.
-- If something failed before PR creation, relay the error.
+- If "Nothing to ship.", relay it and stop.
+- If something failed before PR creation, relay the error and stop.
+- If response contains `PR_URL:`, report **"PR created"** + URL and a brief recap of fixes. Then continue to Phase 3 — watch CI yourself.
+
+## Phase 3: Watch CI, dispatch fixes
+
+You (the orchestrator) poll CI directly so progress is visible in this session — no silent multi-minute wait. Take the `PR_NUMBER` and `BRANCH` from the agent's return block.
+
+Do **not** use `gh pr checks --watch` — it's a long-lived foreground call. Poll instead, as a sequence of short calls, and **emit a one-line status update after every single poll** (e.g. "CI still pending, checking again in ~25s" / "check `build` failed, dispatching a fix") — the whole point of this phase living here instead of in a subagent is that you narrate it instead of going silent.
+
+1. Run `gh pr checks` and check its exit code: `0` = every check passed; `8` = checks still pending/running (including the moment right after PR creation, before CI has registered the run — expected, not a failure); any other non-zero = one or more checks failed.
+2. On exit `8`: tell the user CI is still pending, then run a plain `sleep 25` Bash call, then repeat step 1. Cap total polling at **~20 minutes** of wall time. If still pending when the cap is hit, stop polling, note CI status as **unresolved**, and continue to Phase 4 — don't guess, don't keep polling past the cap.
+3. On exit `0`: note CI as green and continue to Phase 4.
+4. On a failing exit code: tell the user which check(s) failed, then pull the failing log yourself so you can narrate what broke:
+   - `gh run list --branch <branch> --limit 1 --json databaseId -q '.[0].databaseId'`
+   - `gh run view <run-id> --log-failed`
+   - Summarize the failure to the user in one or two lines, then dispatch the `ci-fixer` agent, passing it: the branch name, PR number, which check(s) failed, and the log excerpt you just pulled.
+   - When `ci-fixer` returns:
+     - `FIX_STATUS: pushed` → tell the user a fix was pushed, then re-poll from step 1 against the new commit's checks.
+     - `FIX_STATUS: flaky` → relay that the fixer judged this unrelated to the diff, and ask the user whether to re-run the job themselves (this session can't re-run CI directly). Continue to Phase 4.
+     - `FIX_STATUS: stuck` → relay what the fixer found and why it couldn't fix it, note CI as red, and continue to Phase 4.
+   - Cap fix dispatches at **2 attempts**. If still red after the 2nd dispatch, stop polling, summarize what both attempts tried and the remaining failure, and continue to Phase 4.
+
+Never bypass a failing check yourself (no skipping, no disabling, no force-merge) — that rule applies to you as much as to the fixer.
+
+## Phase 4: Surface held findings
+
+CI is now resolved (green, red, or unresolved) and the PR is live either way. This is where the Surface findings held back in 1e finally show up — deliberately last, so they never block or delay the ship.
+
+- If there are no Surface findings, say so briefly ("No ambiguous findings to review.") and stop — nothing else to do.
+- Otherwise, present each Surface finding to the user in chat: its `file:line` anchor (if any), the one-sentence summary, and its options (A/B/C, "leave as-is" included). Ask the user which option they want for each, or whether to leave it as-is.
+- This is a plain chat exchange, not a PR comment and not a gate — the PR already exists and CI has already been handled regardless of what the user decides here. Apply whatever the user picks as a follow-up if they want it done now; otherwise just leave it as their call to act on later.
