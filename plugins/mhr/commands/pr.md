@@ -1,10 +1,8 @@
-Ship all current changes to main via a pull request — but only after a full automated review passes.
-
-This command runs a review gate first. If there are findings that need your input, the PR is **not** created — you'll see the findings and can decide what to do. Auto-fixable issues are applied before shipping.
+Ship all current changes to main via a pull request, fully automated: an agent panel reviews the diff, mechanical/clear-cut findings are fixed before shipping, the PR opens without waiting for you, ambiguous findings land as PR comments instead of a chat gate, and CI is watched through to a resolved state (fixed automatically if it goes red, up to 2 attempts).
 
 ---
 
-## Phase 1: Review gate
+## Phase 1: Review & auto-fix
 
 ### 1a. Gather changes
 
@@ -96,37 +94,20 @@ Merge surviving findings (passing the score filter + pre-check). Deduplicate ove
 
 After applying auto-fix and fix-and-apply items, run `just lint-fix` to apply formatting (skip for docs-only). **Don't re-run build, tests, or the project's other hooks/checks here** — the project's pre-commit and pre-push hooks run them when the Phase 2 agent commits and pushes, and that agent fixes anything that fails. Re-running them here is redundant.
 
-### 1e. Gate decision
+### 1e. Prepare Surface items for posting (no gate)
 
-**If any Surface items exist:**
+Surface items no longer block PR creation. For each Surface finding, prepare a short comment payload the Phase 2 agent will post to the PR:
 
-Stop. Do NOT proceed to Phase 2 yet. Surface items are things you could not fix without the user's input — frame them that way. Report concisely: what the ambiguity or intent question is, not a line-by-line diff. Keep each finding to 2–3 concrete options. Order options by what you'd recommend (A first).
+- **Anchor:** `file:line` if the finding has one (from the reviewing agent's `- file: <path>:<line>` output), else none.
+- **Body:** one-sentence summary of the ambiguity/intent question, plus 2–3 concrete options (same bar as before: order by recommendation, A first, "leave as-is" is a valid option). No line-by-line diff dumps — keep it as tight as the old chat-gate format was.
 
-Format:
+Carry this list (with anchors) into Phase 2 — the agent posts each as a plain PR comment (prefixed with its `file:line` anchor when it has one). True inline review comments aren't available here since they require `gh api`, which the repo's guard hook blocks outright.
 
-> ### Review needs your input
->
-> **Applied automatically:** one short line — or omit if nothing was applied.
->
-> **Findings to decide:**
->
-> **F1 — \<short title, ~6 words\>** *(security | perf | data | correctness | UX)*
-> One-sentence overview. No jargon unless unavoidable.
-> - **A.** \<option, one short line\>
-> - **B.** \<option, one short line\>
-> - **C.** \<option, one short line — often "leave as-is"\>
->
-> **F2 — …** *(same format)*
->
-> Reply with your picks (e.g. `F1: B, F2: A`) and I'll apply them and finish the PR — you don't need to re-run `/pr`.
-
-When the user replies with picks, apply them, re-run lint/build per 1d, then continue to Phase 2. Do not re-gate the same findings.
-
-**Otherwise (no Surface items):** one-line summary of auto-fixes and any fix-and-apply / advisor-mediated calls, then continue to 1f.
+One-line summary of auto-fixes, fix-and-apply / advisor-mediated calls, and how many Surface items will be posted as comments, then continue to 1f. Do not stop here — proceed straight to 1f and Phase 2.
 
 ### 1f. Doc status sync
 
-After the gate passes (and after any Surface picks are applied), sync status markers in tracking docs to reflect what this PR actually ships. Run **after** all code changes are settled so doc updates capture the final state.
+After triage settles (1d/1e), sync status markers in tracking docs to reflect what this PR actually ships. Run **after** all code changes are settled so doc updates capture the final state.
 
 Scope:
 - The project's spec/docs if present (e.g. a `SPEC.md` or similar tracking doc with a Status column) — the status markers are the primary target. Walk the changed files and the PR's effective behavior; for each tracked item whose implementation moved, update its status accordingly:
@@ -145,7 +126,7 @@ Keep a short list of the doc edits made — applied (`file — item: old → new
 
 ---
 
-## Phase 2: Create the PR
+## Phase 2: Create the PR, post findings, watch CI
 
 Spawn the `pr` agent with this prompt:
 
@@ -159,12 +140,18 @@ Spawn the `pr` agent with this prompt:
 > - **Auto-fixes:** [list or "none"]
 > - **Fix-and-apply choices:** [list or "none"]
 > - **Advisor-mediated calls:** [list or "none"]
-> - **User picks at gate:** [list or "none"]
 > - **Doc status updates:** [list of `file — item: old → new` or `file — item: skipped (<reason>)` lines, or "none"]
 >
 > Lint verified.
+>
+> **Surface findings to post as PR comments** (do not gate on these — the PR ships regardless): [list each as `file:line — summary + options (A/B/C)`, or "none". If none, skip step 7 in your workflow entirely.]
+>
+> After the PR is open and findings are posted, watch CI through to resolution per your workflow (steps 8–9), fixing up to 2 times if it goes red.
 
 When the agent finishes:
-- If response contains `PR_URL:`, reply with **"PR created"** + URL + brief recap of fixes.
+- If response contains `PR_URL:`, report **"PR created"** + URL, a brief recap of fixes, how many Surface comments were posted, and the `CI_STATUS`:
+  - `green` → "CI green — all done."
+  - `red` → summarize what was tried across both fix attempts and the remaining failure, so the user knows what needs their attention.
+  - `unresolved` → note that CI status couldn't be determined (e.g. no checks configured) and the PR is otherwise ready.
 - If "Nothing to ship.", relay it.
-- If something failed, relay the error.
+- If something failed before PR creation, relay the error.
