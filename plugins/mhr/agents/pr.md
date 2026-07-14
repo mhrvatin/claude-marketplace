@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Analyze changes, create logical commits, branch, open a PR to main, post review findings as PR comments, and watch CI through to a resolved state.
+description: Analyze changes, create logical commits, branch, and open a PR to main.
 model: sonnet
 tools:
   - Bash
@@ -13,7 +13,7 @@ tools:
 
 # PR Agent
 
-Create a pull request for all uncommitted changes in the working tree, post any ambiguous review findings as PR comments, then watch CI through to resolution.
+Create a pull request for all uncommitted changes in the working tree, then hand back to the caller. You do not post PR comments and you do not watch CI — the caller handles ambiguous findings and CI itself, dispatching a separate agent if a CI fix is needed.
 
 ## Workflow
 
@@ -95,44 +95,17 @@ EOF
 )"
 ```
 
-### 7. Post ambiguous findings as PR comments
+`gh pr create` prints the PR URL. Get the PR number from it with `gh pr view --json number -q .number` (run against the just-pushed branch) — the caller needs this to poll CI.
 
-If the caller passed you a list of **Surface findings** (ambiguous review items that couldn't be auto-fixed), post each one as a PR comment — don't wait for anything, don't ask the user, just post. There's no inline-review-comment path available (that requires `gh api`, which is off-limits); use plain comments instead:
+### 7. Return result
 
-```bash
-gh pr comment <pr_number> --body "<file:line — summary + options>"
-```
-
-One comment per finding (or batch them into a single comment if there are many — your call). Keep each body short: the `file:line` anchor (if the finding has one) plus its one-sentence summary and options — same content the orchestrator would otherwise have shown inline in chat. End every comment body with a signature line, on its own line: `*🤖 Claude Code*` (italic, so it's unmistakably not the user's own comment). This step never blocks PR creation — it only annotates a PR that already exists.
-
-### 8. Watch CI
-
-Do **not** use `gh pr checks --watch` as a single call — it's a long-lived foreground process that can run longer than one Bash call's timeout, and it would sit there through your fix loop too. Poll instead, as a sequence of short calls:
-
-1. Run `gh pr checks` and check its exit code: `0` = every check passed; `8` = checks still pending/running (including the moment right after `gh pr create`, before CI has registered the run at all — this is expected, not a failure); any other non-zero = one or more checks failed.
-2. On exit `8`: sleep ~20-30s (a plain `sleep 25` Bash call), then repeat step 1. Cap total polling at **~20 minutes** of wall time. If still pending when the cap is hit, stop and report `CI_STATUS: unresolved` — don't guess at an outcome, and don't keep polling past the cap.
-3. On exit `0`: proceed to step 9, all green.
-4. On failing exit code: enter the fix loop below, capped at **2 attempts**:
-   1. Get the failing run's logs: `gh run list --branch <branch> --limit 1 --json databaseId -q '.[0].databaseId'`, then `gh run view <run-id> --log-failed`.
-   2. Diagnose the failure from the log output.
-   3. Fix the underlying cause (code, config, test — whatever the log points to).
-   4. Commit the fix as a **new commit** (never `--amend`): `fix: address CI failure (attempt N)`.
-   5. `git push` (no `--force`).
-   6. Re-poll from step 1 against the new commit's checks. If green, stop the loop and report success, noting which attempt fixed it.
-   7. If still red after attempt 2, stop. Do not attempt a 3rd time. Report the failure: which check(s) are red, what you tried in each attempt, and the relevant log excerpt — this needs the user's judgment.
-
-Never bypass a failing check (no skipping, no disabling the check, no force-merge). If a failure looks flaky (e.g. a timeout/network blip unrelated to this diff) rather than caused by the change, say so explicitly in your report rather than "fixing" something that isn't broken — pushing an empty/no-op retry isn't available here (`gh run rerun` isn't on the allowed command list), so just flag it as likely-flaky and let the user decide whether to re-run it themselves.
-
-### 9. Return result
-
-Always end your response with exactly this format so the caller can parse it:
+You do not post PR comments and you do not watch CI. Once the PR is open, always end your response with exactly this format so the caller can parse it:
 
 ```
 PR_URL: <the full PR url>
-CI_STATUS: green | red | unresolved
+PR_NUMBER: <the PR number>
+BRANCH: <the branch you pushed>
 ```
-
-Use `red` if checks failed and your fix attempts didn't turn it green; `unresolved` if there's no way to get a real answer — no checks configured on this repo, or still pending when the ~20-minute polling cap is hit. Follow this block with a short prose summary: what comments you posted (if any) and, if CI is red or unresolved, what you observed/tried.
 
 ## When a hook blocks the commit or push
 
@@ -155,4 +128,4 @@ If a gate still fails after your fixes, report the failure and what you tried �
 - Never push with `--no-verify` or `--force`.
 - Never combine commands with `&&` or `;`. Run each git command as a separate Bash call.
 - For deleted files, use `git rm <file>` as a separate command from `git add`.
-- Never skip, disable, or bypass a CI check to force green. Cap CI-fix attempts at 2 (step 8) — if still red, report and stop.
+- You do not post PR comments, and you do not watch or fix CI — those are the caller's job. Your job ends once the PR is open.
