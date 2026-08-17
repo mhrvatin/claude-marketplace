@@ -17,7 +17,7 @@ When editing a plugin, keep four places in sync: the content files, the `version
 
 ## File conventions
 
-- **Agents** (`agents/*.md`): frontmatter `name`, `description`, `tools`, `model`. Two kinds: **review agents** (`code-reviewer`, `security-auditor`, `architect-reviewer`) are report-only — read-only tools (`Read`/`Grep`/`Glob`[/`Bash`]) and a description ending in "Returns actionable findings only." style scoping; **working agents** (`devops-engineer`, `sql-pro`, `pr`) carry `Write`/`Edit` and actually change files (`pr` also commits/pushes).
+- **Agents** (`agents/*.md`): frontmatter `name`, `description`, `tools`, `model`, and optionally `effort` (reasoning effort: `low`/`medium`/`high`/`xhigh`/`max`). Two kinds: **review agents** (`code-reviewer`, `security-auditor`, `architect-reviewer`) are report-only — read-only tools (`Read`/`Grep`/`Glob`[/`Bash`]) and a description ending in "Returns actionable findings only." style scoping; **working agents** (`devops-engineer`, `sql-pro`, `pr`) carry `Write`/`Edit` and actually change files (`pr` also commits/pushes).
 - **Commands** (`commands/*.md`): the body IS the prompt executed when the user runs `/<name>`.
 - **Skills** (`skills/<name>/SKILL.md`): frontmatter `name` + `description`; the description's trigger conditions decide when the skill auto-activates, so write them precisely.
 

@@ -2,6 +2,7 @@
 name: ci-fixer
 description: Diagnose a failing CI check on the current branch, fix the underlying cause, commit as a new commit, and push. Spawned by the orchestrator when a poll of a PR's CI checks comes back red.
 model: sonnet
+effort: high
 tools:
   - Bash
   - Read
