@@ -1,5 +1,7 @@
 Break a spec section, a decision just recorded, or the current conversation into vertical-slice GitHub issues, wire their blocking edges with the tracker's native relationship, and mark them `ready-for-agent`. Confirms the breakdown with the user once, then publishes — this command does not implement anything itself, and `/mhr:implement` doesn't require the label either (a hand-filed issue works too); it's a convention for anything building a backlog view on top, not an enforced gate.
 
+`/mhr:interview` invokes this automatically as its own finalize step, so day to day you shouldn't need to run it by hand. Invoke it directly yourself for content that already exists but was never ticketed — e.g. a one-time migration of an existing `SPEC.md` backlog onto issues, or a decision-only spec you held off filing on and are now ready to build.
+
 > $ARGUMENTS
 
 ---
@@ -9,6 +11,7 @@ Break a spec section, a decision just recorded, or the current conversation into
 - If `$ARGUMENTS` references a doc, section, or ID range, read it in full.
 - If `$ARGUMENTS` is empty and a spec/decision was just finalized earlier in this conversation (e.g. an `/mhr:interview` session that just wrapped), use that.
 - If neither applies, stop and ask what to break down — don't guess a scope.
+- Exclude anything marked `Deferred` in the source — file only confirmed, ready-to-build requirements, unless the user explicitly asks to ticket a deferred item too.
 
 ## 2. Explore the codebase, as needed
 
@@ -73,4 +76,4 @@ gh issue edit <ticket> --add-blocked-by <blocker>
 
 ## 6. Report
 
-One message: the tickets filed, in dependency order, each as `#<n> <title>` with its link — grouped into **ready now** (no open blockers) and **blocked** (waiting on another ticket in this batch). Nothing else — publishing is the deliverable here, not implementing.
+One message: the tickets filed, in dependency order, each as `#<n> <title>` with its link — grouped into **ready now** (no open blockers) and **blocked** (waiting on another ticket in this batch). Note that ready tickets can be picked up next with `/mhr:implement <ticket>`. Otherwise nothing else — publishing is the deliverable here, not implementing.
