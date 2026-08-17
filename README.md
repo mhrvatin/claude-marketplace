@@ -15,6 +15,9 @@ claude plugin install mhr@mhrvatin
 |------|------|-------|
 | command | `pr` | Sizes the diff into a tier, fans out review agents, scores findings, applies fixes, spawns the `pr` agent to commit/push/open the PR without waiting for input, polls CI itself and dispatches the `ci-fixer` agent (up to 2 attempts) if it goes red, then surfaces any ambiguous findings in chat last. |
 | command | `interview` | Requirements-interviewer that writes a spec section (assumes a `docs/SPEC.md`-style spec if present). |
+| command | `to-tickets` | Breaks a spec/decision/conversation into vertical-slice GitHub issues, confirms the breakdown with you once, then publishes them with native blocking edges wired and a `ready-for-agent` label. |
+| command | `build` | Chains `/mhr:to-tickets` then `/mhr:implement` over every immediately-ready ticket, picking up wherever `/mhr:interview` left off. Never interviews you itself. |
+| command | `implement` | Takes a GitHub issue reference, claims it, implements it in a worktree with no plan check-in, verifies it's green, then invokes `/mhr:pr` and links the issue so merging closes it. Stops and reports instead of guessing when genuinely blocked. |
 | command | `todo-minor` | Surfaces minor, bite-sized work items. |
 | agent | `code-reviewer` | Correctness/edge-case/test review. |
 | agent | `security-auditor` | Injection, auth, secrets, validation, deps. |
