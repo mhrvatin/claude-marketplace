@@ -26,6 +26,7 @@ claude plugin install mhr@mhrvatin
 | agent | `pr` | Commits, branches, pushes, and opens the PR; spawned by the `pr` command, which then watches CI itself and surfaces ambiguous findings in chat once CI resolves. |
 | agent | `ci-fixer` | Diagnoses and fixes a red CI check on the current branch, pushes a new commit; spawned by the `pr` command's own CI poll loop when a check fails. |
 | skill | `test-driven-development` | TDD discipline + supporting refs. |
+| skill | `mockup` | Constrained-redesign mockups: locks in the existing design system and copy, changes only the explicitly named elements. |
 
 (The `pr` command spawns a `pr` agent that just commits, pushes, and opens the PR, then polls CI itself in the main session, dispatches a `ci-fixer` agent to fix any red checks, and only afterward surfaces ambiguous review findings in chat for you to decide on.)
 
