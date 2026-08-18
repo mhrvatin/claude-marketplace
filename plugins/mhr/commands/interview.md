@@ -56,6 +56,8 @@ These are working drafts, not the final word — `Draft` status signals "resolve
 - Still-deferred items: set `Status = Deferred` in the section table, and `Priority = Deferred (Section N)` in the requirements index, with a note on what's unresolved.
 - ADRs and architecture updates written during the session need no further action — they were already final when written (the "Write as you go" section's three-part test already vetted them).
 
+**Then file tickets — don't wait to be asked.** Invoke `/mhr:to-tickets docs/SPEC.md <the exact IDs just confirmed>` — name the IDs explicitly rather than invoking with no arguments, even though this is the same conversation: a section can span multiple interview sessions over time, so once finalized these rows are blank-`Status` like any other already-shipped row in the same table, and an implicit "current conversation" reference is also fragile across a mid-session compaction. Excludes deferred items — they weren't confirmed as ready to build. `/mhr:to-tickets` proposes the vertical-slice breakdown, confirms it with the user once, and publishes the GitHub issues. Skip this step only if the user's go-ahead explicitly said not to file yet (e.g. a decision-only spec nobody's ready to build) — note in that case that `/mhr:to-tickets` can be run against these IDs whenever they are.
+
 Formatting rules for `docs/SPEC.md`:
 
 - **Section number and ID prefix:** Determine the next available section number by checking the existing sections in SPEC.md. Choose an ID prefix consistent with the topic (e.g., `DARK-` for dark mode, `NOTIF-` for notifications). Use this prefix consistently for all requirements in the section.
