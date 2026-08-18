@@ -1,6 +1,6 @@
-Break a spec section, a decision just recorded, or the current conversation into vertical-slice GitHub issues, wire their blocking edges with the tracker's native relationship, and mark them `ready-for-agent`. Confirms the breakdown with the user once, then publishes — this command does not implement anything itself, and `/mhr:implement` doesn't require the label either (a hand-filed issue works too); it's a convention for anything building a backlog view on top, not an enforced gate.
+Break a spec section, a temporary interview doc, a decision just recorded, or the current conversation into vertical-slice GitHub issues, wire their blocking edges with the tracker's native relationship, and mark them `ready-for-agent`. Confirms the breakdown with the user once, then publishes — this command does not implement anything itself, and `/mhr:implement` doesn't require the label either (a hand-filed issue works too); it's a convention for anything building a backlog view on top, not an enforced gate.
 
-`/mhr:interview` invokes this automatically as its own finalize step, so day to day you shouldn't need to run it by hand. Invoke it directly yourself for content that already exists but was never ticketed — e.g. a one-time migration of an existing `SPEC.md` backlog onto issues, or a decision-only spec you held off filing on and are now ready to build.
+`/mhr:interview` invokes this automatically as its own finalize step, pointing it at that session's temporary interview doc (not `docs/SPEC.md` — interview never writes there), so day to day you shouldn't need to run it by hand. Invoke it directly yourself for content that already exists but was never ticketed — e.g. a one-time migration of an existing `SPEC.md` backlog onto issues, or a decision-only spec you held off filing on and are now ready to build.
 
 > $ARGUMENTS
 
@@ -9,6 +9,7 @@ Break a spec section, a decision just recorded, or the current conversation into
 ## 1. Gather the source
 
 - If `$ARGUMENTS` references a doc, section, or ID range, read it in full.
+- If `$ARGUMENTS` gives both a doc path and a list of IDs (e.g. `/mhr:interview`'s finalize step passing its temporary interview doc plus the confirmed IDs), read the doc and file only those listed IDs — the rest of the doc may be `Deferred` or otherwise out of scope for this run.
 - If `$ARGUMENTS` is empty and a spec/decision was just finalized earlier in this conversation (e.g. an `/mhr:interview` session that just wrapped), use that.
 - If neither applies, stop and ask what to break down — don't guess a scope.
 - Exclude anything marked `Deferred` in the source — file only confirmed, ready-to-build requirements, unless the user explicitly asks to ticket a deferred item too.
@@ -61,10 +62,10 @@ gh issue create --title "<title>" --body "<body>" --label ready-for-agent
 
   ## Spec reference
 
-  <doc path + section/IDs this ticket implements, if applicable>
+  <IDs this ticket implements, plus the doc path if that doc is expected to persist (e.g. `docs/SPEC.md`, `docs/DECISIONS.md`) — omit the path for an ephemeral source like a temporary interview doc, since it may be deleted once filing is done and a dangling path is worse than none>
   ```
 
-  Avoid file paths or code snippets in the body — they go stale. Exception: a decision that's more precisely a type shape, schema, or state machine than prose can inline it briefly.
+  Avoid file paths or code snippets in the body otherwise — they go stale. Exception: a decision that's more precisely a type shape, schema, or state machine than prose can inline it briefly.
 
 Once every ticket exists, wire blocking edges in a second pass:
 
