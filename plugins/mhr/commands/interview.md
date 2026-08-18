@@ -78,9 +78,11 @@ Formatting rules for the temporary interview doc:
 [One sentence acknowledging the topic, first message only]
 
 1. **[Short question title]**: [question body]
+
    Recommend: [recommended answer] — [one-line reason].
 
 2. **[Short question title]**: [question body]
+
    Recommend: [recommended answer] — [one-line reason].
 ...
 ```
