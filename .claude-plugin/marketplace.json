@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "mhr",
-      "description": "Personal workflow commands (pr, interview, to-tickets, implement, todo-minor), review agents (code-reviewer, security-auditor [opus], architect-reviewer) plus working agents (sql-pro, devops-engineer, pr, ci-fixer), and skills (test-driven-development, mockup).",
+      "description": "Personal workflow commands (pr, interview, to-tickets, implement, todo-minor), review agents (code-reviewer, security-auditor [opus], architect-reviewer) plus working agents (sql-pro, devops-engineer, pr-creator, ci-fixer), and skills (test-driven-development, mockup).",
       "author": {
         "name": "Marcus Hrvatin"
       },
