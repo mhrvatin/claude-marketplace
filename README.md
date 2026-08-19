@@ -13,7 +13,7 @@ claude plugin install mhr@mhrvatin
 
 | Type | Name | Notes |
 |------|------|-------|
-| command | `pr` | Sizes the diff into a tier, fans out review agents, scores findings, applies fixes, spawns the `pr` agent to commit/push/open the PR without waiting for input, polls CI itself and dispatches the `ci-fixer` agent (up to 2 attempts) if it goes red, then surfaces any ambiguous findings in chat last. |
+| command | `pr` | Sizes the diff into a tier, fans out review agents, scores findings, applies fixes, spawns the `pr-creator` agent to commit/push/open the PR without waiting for input, polls CI itself and dispatches the `ci-fixer` agent (up to 2 attempts) if it goes red, then surfaces any ambiguous findings in chat last. |
 | command | `interview` | Requirements-interviewer that reads the project's `docs/SPEC.md`/`DECISIONS.md`/`ARCHITECTURE.md` for context (writing only to the latter two), resolves requirements into an uncommitted temporary doc, then automatically invokes `/mhr:to-tickets` on what it just confirmed to file GitHub issues. |
 | command | `to-tickets` | Breaks a spec section, temporary interview doc, decision, or conversation into vertical-slice GitHub issues, confirms the breakdown with you once, then publishes them with native blocking edges wired and a `ready-for-agent` label. Normally invoked automatically by `/mhr:interview`; run it directly to retroactively ticket existing spec content. |
 | command | `implement` | Takes a GitHub issue reference, claims it, implements it in a worktree with no plan check-in, verifies it's green, then invokes `/mhr:pr` and links the issue so merging closes it. Stops and reports instead of guessing when genuinely blocked. |
@@ -23,12 +23,12 @@ claude plugin install mhr@mhrvatin
 | agent | `architect-reviewer` | Boundaries, coupling, API/data-flow alignment. |
 | agent | `sql-pro` | SQL/Postgres + Drizzle ORM review. |
 | agent | `devops-engineer` | CI/CD, containerization, infra. |
-| agent | `pr` | Commits, branches, pushes, and opens the PR; spawned by the `pr` command, which then watches CI itself and surfaces ambiguous findings in chat once CI resolves. |
+| agent | `pr-creator` | Commits, branches, pushes, and opens the PR; spawned by the `pr` command, which then watches CI itself and surfaces ambiguous findings in chat once CI resolves. |
 | agent | `ci-fixer` | Diagnoses and fixes a red CI check on the current branch, pushes a new commit; spawned by the `pr` command's own CI poll loop when a check fails. |
 | skill | `test-driven-development` | TDD discipline + supporting refs. |
 | skill | `mockup` | Constrained-redesign mockups: locks in the existing design system and copy, changes only the explicitly named elements. |
 
-(The `pr` command spawns a `pr` agent that just commits, pushes, and opens the PR, then polls CI itself in the main session, dispatches a `ci-fixer` agent to fix any red checks, and only afterward surfaces ambiguous review findings in chat for you to decide on.)
+(The `pr` command spawns a `pr-creator` agent that just commits, pushes, and opens the PR, then polls CI itself in the main session, dispatches a `ci-fixer` agent to fix any red checks, and only afterward surfaces ambiguous review findings in chat for you to decide on.)
 
 ## Hooks
 

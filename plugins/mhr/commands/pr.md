@@ -128,7 +128,7 @@ Keep a short list of the doc edits made — applied (`file — item: old → new
 
 ## Phase 2: Create the PR
 
-Spawn the `pr` agent with this prompt:
+Spawn the `pr-creator` agent with this prompt:
 
 > Create a PR for all changes in the working tree (staged, unstaged, committed-ahead-of-main).
 >

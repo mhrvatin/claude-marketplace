@@ -1,5 +1,5 @@
 ---
-name: pr
+name: pr-creator
 description: Analyze changes, create logical commits, branch, and open a PR to main.
 model: sonnet
 effort: medium
