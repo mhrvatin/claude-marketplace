@@ -1,6 +1,6 @@
-Break a spec section, a temporary interview doc, a decision just recorded, or the current conversation into vertical-slice GitHub issues, wire their blocking edges with the tracker's native relationship, and mark them `ready-for-agent`. Confirms the breakdown with the user once, then publishes — this command does not implement anything itself, and `/mhr:implement` doesn't require the label either (a hand-filed issue works too); it's a convention for anything building a backlog view on top, not an enforced gate.
+Break a spec section, a temporary interview doc, a decision just recorded, or the current conversation into vertical-slice GitHub issues, wire their blocking edges with the tracker's native relationship, and mark them `ready-for-agent`. Confirms the breakdown with the user once (skipped when invoked with `--auto`, see step 4), then publishes — this command does not implement anything itself, and `/mhr:implement` doesn't require the label either (a hand-filed issue works too); it's a convention for anything building a backlog view on top, not an enforced gate.
 
-`/mhr:interview` invokes this automatically as its own finalize step, pointing it at that session's temporary interview doc (not `docs/SPEC.md` — interview never writes there), so day to day you shouldn't need to run it by hand. Invoke it directly yourself for content that already exists but was never ticketed — e.g. a one-time migration of an existing `SPEC.md` backlog onto issues, or a decision-only spec you held off filing on and are now ready to build.
+`/mhr:interview` invokes this automatically as its own finalize step, pointing it at that session's temporary interview doc (not `docs/SPEC.md` — interview never writes there) and passing `--auto` (see step 4) so the whole interview-to-tickets chain runs without a second confirmation, so day to day you shouldn't need to run it by hand. Invoke it directly yourself for content that already exists but was never ticketed — e.g. a one-time migration of an existing `SPEC.md` backlog onto issues, or a decision-only spec you held off filing on and are now ready to build.
 
 > $ARGUMENTS
 
@@ -8,6 +8,7 @@ Break a spec section, a temporary interview doc, a decision just recorded, or th
 
 ## 1. Gather the source
 
+- A trailing `--auto` flag (see step 4) is a mode switch, not part of the scope — strip it before parsing the rest of `$ARGUMENTS` as a doc path/ID range, and never let it leak into a ticket title or ID list.
 - If `$ARGUMENTS` references a doc, section, or ID range, read it in full.
 - If `$ARGUMENTS` gives both a doc path and a list of IDs (e.g. `/mhr:interview`'s finalize step passing its temporary interview doc plus the confirmed IDs), read the doc and file only those listed IDs — the rest of the doc may be `Deferred` or otherwise out of scope for this run.
 - If `$ARGUMENTS` is empty and a spec/decision was just finalized earlier in this conversation (e.g. an `/mhr:interview` session that just wrapped), use that.
@@ -30,9 +31,9 @@ Break the work into tracer-bullet tickets:
 
 Give each ticket its blocking edges — the other tickets that must land first. A ticket with no blockers can start immediately.
 
-## 4. Confirm with the user — once
+## 4. Confirm with the user — once (skip if `--auto`)
 
-Present the proposed breakdown as a numbered list, one entry per ticket: title, blocked by (or "none"), what it delivers end-to-end. Ask whether the granularity and blocking edges look right, and iterate until approved. This is the only interactive step in this command — do not add others.
+If `$ARGUMENTS` includes `--auto` (e.g. `/mhr:interview`'s finalize step invokes this way), the caller has already decided the breakdown is final — skip straight to publishing, no confirmation. Otherwise: present the proposed breakdown as a numbered list, one entry per ticket: title, blocked by (or "none"), what it delivers end-to-end. Ask whether the granularity and blocking edges look right, and iterate until approved. This is the only interactive step in this command — do not add others.
 
 ## 5. Publish to GitHub
 
