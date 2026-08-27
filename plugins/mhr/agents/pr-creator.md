@@ -96,6 +96,8 @@ EOF
 )"
 ```
 
+If the caller's prompt includes a **Draft: yes** field (it does this when review found findings that still need addressing before merge), add `--draft` to the `gh pr create` command, and add a line near the top of the body: `_Draft: N finding(s) from automated review need addressing — see chat. Mark ready for review once resolved._` (substitute the actual count from the caller's `Draft:` field). If the field says **Draft: no** or is absent, open normally.
+
 `gh pr create` prints the PR URL. Get the PR number from it with `gh pr view --json number -q .number` (run against the just-pushed branch) — the caller needs this to poll CI.
 
 ### 7. Return result

@@ -1,4 +1,4 @@
-Ship all current changes to main via a pull request, fully automated: an agent panel reviews the diff, mechanical/clear-cut findings are fixed before shipping, the PR opens without waiting for you, CI is watched through to a resolved state (fixed automatically if it goes red, up to 2 attempts), and only then are any ambiguous findings surfaced to you in chat — held back so they don't distract from or block the ship.
+Ship all current changes to main via a pull request, fully automated: an agent panel reviews the diff, mechanical/clear-cut findings are fixed before shipping, the PR opens without waiting for you (as a draft, if any ambiguous findings remain, so it can't be merged before they're addressed), CI is watched through to a resolved state (fixed automatically if it goes red, up to 2 attempts), and only then are any ambiguous findings surfaced to you in chat — held back so they don't distract from or delay the ship.
 
 ---
 
@@ -96,7 +96,7 @@ After applying auto-fix and fix-and-apply items, run `just lint-fix` to apply fo
 
 ### 1e. Hold Surface items for later
 
-Surface items no longer block or annotate PR creation — they aren't posted as PR comments. For each Surface finding, prepare a short chat payload to show the user **after CI resolves** (Phase 4):
+Surface items no longer delay or annotate PR creation, and they aren't posted as PR comments — but their presence does gate the PR from being merge-ready: Phase 2 opens it as a draft until Phase 4 resolves them. For each Surface finding, prepare a short chat payload to show the user **after CI resolves** (Phase 4):
 
 - **Anchor:** `file:line` if the finding has one (from the reviewing agent's `- file: <path>:<line>` output), else none.
 - **Body:** one-sentence summary of the ambiguity/intent question, plus 2–3 concrete options (order by recommendation, A first, "leave as-is" is a valid option). No line-by-line diff dumps — keep it tight.
@@ -128,6 +128,8 @@ Keep a short list of the doc edits made — applied (`file — item: old → new
 
 ## Phase 2: Create the PR
 
+If the Surface list held from 1e is non-empty, this PR must open as a **draft** — those findings still need addressing and a draft can't be merged by accident before that happens. If the Surface list is empty, open normally (ready for review).
+
 Spawn the `pr-creator` agent with this prompt:
 
 > Create a PR for all changes in the working tree (staged, unstaged, committed-ahead-of-main).
@@ -136,11 +138,13 @@ Spawn the `pr-creator` agent with this prompt:
 >
 > If commit and push succeed, the project's enforced hooks (lint, build, tests) all passed; any advisory checks may have printed findings without blocking. PR test plan should note "Verified by pre-push hooks: lint, build, tests" — don't ask the reviewer to re-run.
 >
-> **From this session:** automated review passed. Include the following in the PR body — substitute concrete content for each placeholder before spawning the agent:
+> **From this session:** automated review ran; all mechanical/enforceable findings were fixed (any remaining findings are ambiguous and reflected in the `Draft:` field below). Include the following in the PR body — substitute concrete content for each placeholder before spawning the agent:
 > - **Auto-fixes:** [list or "none"]
 > - **Fix-and-apply choices:** [list or "none"]
 > - **Advisor-mediated calls:** [list or "none"]
 > - **Doc status updates:** [list of `file — item: old → new` or `file — item: skipped (<reason>)` lines, or "none"]
+>
+> **Draft:** [yes — N unresolved finding(s) need addressing before merge (substitute the actual count) | no] — this is a control signal for whether to open as a draft, not PR body content; don't put it in the bullet list above.
 >
 > Lint verified.
 >
@@ -149,7 +153,7 @@ Spawn the `pr-creator` agent with this prompt:
 When the agent finishes:
 - If "Nothing to ship.", relay it and stop.
 - If something failed before PR creation, relay the error and stop.
-- If response contains `PR_URL:`, report **"PR created"** + URL and a brief recap of fixes. Then continue to Phase 3 — watch CI yourself.
+- If response contains `PR_URL:`, report **"PR created"** (note "as draft — N finding(s) pending" when applicable) + URL and a brief recap of fixes. Then continue to Phase 3 — watch CI yourself.
 
 ## Phase 3: Watch CI, dispatch fixes
 
@@ -158,7 +162,7 @@ You (the orchestrator) poll CI directly so progress is visible in this session �
 Do **not** use `gh pr checks --watch` — it's a long-lived foreground call. Poll instead, as a sequence of short calls, and **emit a one-line status update after every single poll** (e.g. "CI still pending, checking again in ~25s" / "check `build` failed, dispatching a fix") — the whole point of this phase living here instead of in a subagent is that you narrate it instead of going silent.
 
 1. Run `gh pr checks` and check its exit code: `0` = every check passed; `8` = checks still pending/running (including the moment right after PR creation, before CI has registered the run — expected, not a failure); any other non-zero = one or more checks failed.
-2. On exit `8`: tell the user CI is still pending, then run a plain `sleep 25` Bash call, then repeat step 1. Cap total polling at **~20 minutes** of wall time. If still pending when the cap is hit, stop polling, note CI status as **unresolved**, and continue to Phase 4 — don't guess, don't keep polling past the cap.
+2. On exit `8`: if the PR was opened as a **draft** and no checks have registered at all yet (`gh pr checks` output listing zero rows / "no checks reported" rather than pending ones), keep a zero-check counter. Some repos gate workflows on `ready_for_review` and never run CI on a draft — polling to the cap would just stall, but a single zero-check poll can also just be the moment right after PR creation, so don't bail on the first one. On the **first** zero-check poll: tell the user CI hasn't registered yet, `sleep 25`, and repeat step 1. On the **second consecutive** zero-check poll: stop polling, tell the user CI likely doesn't run on drafts in this repo and will pick up once it's marked ready, note internally that **Phase 3 exited early without observing CI**, and continue to Phase 4. In every other case (checks are registered and pending, or the PR isn't a draft): tell the user CI is still pending, then run a plain `sleep 25` Bash call, then repeat step 1. Cap total polling at **~20 minutes** of wall time. If still pending when the cap is hit, stop polling, note CI status as **unresolved**, and continue to Phase 4 — don't guess, don't keep polling past the cap.
 3. On exit `0`: note CI as green and continue to Phase 4.
 4. On a failing exit code: tell the user which check(s) failed, then pull the failing log yourself so you can narrate what broke:
    - `gh run list --branch <branch> --limit 1 --json databaseId -q '.[0].databaseId'`
@@ -174,8 +178,11 @@ Never bypass a failing check yourself (no skipping, no disabling, no force-merge
 
 ## Phase 4: Surface held findings
 
-CI is now resolved (green, red, or unresolved) and the PR is live either way. This is where the Surface findings held back in 1e finally show up — deliberately last, so they never block or delay the ship.
+CI is now resolved (green, red, unresolved, or — for a draft with no CI on drafts — not yet observed) and the PR is live either way. This is where the Surface findings held back in 1e finally show up — deliberately last, so they never delay the ship, though a non-empty Surface list does hold the PR in draft until this phase settles it.
 
 - If there are no Surface findings, say so briefly ("No ambiguous findings to review.") and stop — nothing else to do.
 - Otherwise, present each Surface finding to the user in chat: its `file:line` anchor (if any), the one-sentence summary, and its options (A/B/C, "leave as-is" included). Ask the user which option they want for each, or whether to leave it as-is.
-- This is a plain chat exchange, not a PR comment and not a gate — the PR already exists and CI has already been handled regardless of what the user decides here. Apply whatever the user picks as a follow-up if they want it done now; otherwise just leave it as their call to act on later.
+- This is a plain chat exchange, not a PR comment — but it is the gate on merge-readiness: the PR already exists (as a draft, since Surface findings were non-empty), and stays a draft until this exchange settles. Apply whatever the user picks as a follow-up if they want it done now; otherwise just leave it as their call to act on later.
+- If you apply any fix here, it only exists in the working tree — commit it (conventional commit, no `--amend`) and `git push` to the PR branch before doing anything else. Confirm `git status --porcelain` is clean afterward. Marking ready before the fix is pushed would let the PR be merged without it — the exact failure this draft gating exists to prevent.
+- Once every Surface finding is either resolved-and-pushed or explicitly left as-is by the user, mark the PR ready: `gh pr ready <PR_NUMBER>`. If the user wants to leave some findings open for later without deciding now, leave the PR in draft and say so — don't mark it ready until they've weighed in on all of them.
+- CI must be observed against whatever commit is actually on the branch when you finish, not just whatever Phase 3 last saw. Return to Phase 3's poll loop (same ~20 min cap, same `ci-fixer` dispatch rules) after `gh pr ready` if either: (a) Phase 3 exited early because the draft had no checks registered — marking ready is what triggers CI, and nothing has watched it yet; or (b) you pushed a fix in this phase after Phase 3 already resolved CI — that earlier green/red result no longer reflects the current commit. Report CI's final state before finishing in either case.
