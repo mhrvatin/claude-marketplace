@@ -1,4 +1,4 @@
-Ship all current changes to main via a pull request, fully automated: an agent panel reviews the diff, mechanical/clear-cut findings are fixed before shipping, the PR opens without waiting for you (as a draft, if any ambiguous findings remain, so it can't be merged before they're addressed), CI is watched through to a resolved state (fixed automatically if it goes red, up to 2 attempts), and only then are any ambiguous findings surfaced to you in chat — held back so they don't distract from or delay the ship.
+Ship all current changes to main via a pull request, fully automated: an agent panel reviews the diff, mechanical/clear-cut findings are fixed before shipping, the PR opens without waiting for you (as a draft, if any ambiguous findings remain, so it can't be merged before they're addressed), CI is watched through to a resolved state (fixed automatically if it goes red, up to 2 attempts), and any ambiguous findings not already settled during review are surfaced to you in chat only then — held back so they don't distract from or delay the ship.
 
 ---
 
@@ -90,7 +90,7 @@ Merge surviving findings (passing the score filter + pre-check). Deduplicate ove
 - **Auto-fix** — purely mechanical: unused imports, dead code, obvious typos in strings/comments, stale references, naming nits, code-quality cleanups with no behavior change. Apply silently.
 - **Fix-and-apply** — any finding with a clear, unambiguous fix: correctness bugs, missing error handling, broken logic, security issues with an obvious mitigation, performance issues with a clear solution, implementation choices where one option is clearly better. **Never defer or add a TODO — fix it now.** Apply the fix; include it in the Phase 2 PR summary. Rule of thumb: if you can write the correct fix from the code alone without asking the author, it belongs here.
 - **Advisor-mediated** — findings where the right fix is unclear or has real trade-offs. Call `advisor()` with the finding and candidate fixes. If decisive, apply and note in the recap. If ambiguous, promote to **Surface**. (If `advisor` is unavailable, treat as **Surface**.)
-- **Surface** — only when no reasonable call can be made from the code alone: (a) the change looks like it could be intentional (removing a guard, changing a default, narrowing an API) and you cannot tell from context; (b) the correct fix depends on business rules or external facts the code does not encode. Standard patterns, conventions, and best practices are yours to apply — do not surface something just because there are multiple valid approaches.
+- **Surface** — only when no reasonable call can be made from the code alone: (a) the change looks like it could be intentional (removing a guard, changing a default, narrowing an API) and you cannot tell from context; (b) the correct fix depends on business rules or external facts the code does not encode. Standard patterns, conventions, and best practices are yours to apply — do not surface something just because there are multiple valid approaches. Default to holding these for Phase 4 (see 1e) instead of asking in chat now. If you do end up asking about one directly during this phase anyway (e.g. it came up naturally, or `advisor` was indecisive and the ambiguity is quick to resolve), the user's answer resolves it immediately — apply their pick, or drop it if they say leave-as-is. Do not add an already-resolved item to the held list in 1e, and do not count it toward the Phase 2 draft decision.
 
 After applying auto-fix and fix-and-apply items, run `just lint-fix` to apply formatting (skip for docs-only). **Don't re-run build, tests, or the project's other hooks/checks here** — the project's pre-commit and pre-push hooks run them when the Phase 2 agent commits and pushes, and that agent fixes anything that fails. Re-running them here is redundant.
 
@@ -100,6 +100,8 @@ Surface items no longer delay or annotate PR creation, and they aren't posted as
 
 - **Anchor:** `file:line` if the finding has one (from the reviewing agent's `- file: <path>:<line>` output), else none.
 - **Body:** one-sentence summary of the ambiguity/intent question, plus 2–3 concrete options (order by recommendation, A first, "leave as-is" is a valid option). No line-by-line diff dumps — keep it tight.
+
+Only findings that are still unresolved at this point belong here. If a finding was already asked about and answered in chat earlier in Phase 1 (see the note in 1d), it's resolved — leave it out of this list entirely, whether the answer was a fix or "leave as-is."
 
 Hold this list in memory for Phase 4 — do not pass it to the Phase 2 agent.
 
@@ -128,7 +130,7 @@ Keep a short list of the doc edits made — applied (`file — item: old → new
 
 ## Phase 2: Create the PR
 
-If the Surface list held from 1e is non-empty, this PR must open as a **draft** — those findings still need addressing and a draft can't be merged by accident before that happens. If the Surface list is empty, open normally (ready for review).
+If the Surface list held from 1e is non-empty, this PR must open as a **draft** — those findings still need addressing and a draft can't be merged by accident before that happens. If the Surface list is empty (including because every candidate was already resolved in chat per 1e), open normally (ready for review).
 
 Spawn the `pr-creator` agent with this prompt:
 
@@ -182,7 +184,7 @@ CI is now resolved (green, red, unresolved, or — for a draft with no CI on dra
 
 - If there are no Surface findings, say so briefly ("No ambiguous findings to review.") and stop — nothing else to do.
 - Otherwise, present each Surface finding to the user in chat: its `file:line` anchor (if any), the one-sentence summary, and its options (A/B/C, "leave as-is" included). Ask the user which option they want for each, or whether to leave it as-is.
-- This is a plain chat exchange, not a PR comment — but it is the gate on merge-readiness: the PR already exists (as a draft, since Surface findings were non-empty), and stays a draft until this exchange settles. Apply whatever the user picks as a follow-up if they want it done now; otherwise just leave it as their call to act on later.
+- This is a plain chat exchange, not a PR comment — but it is the gate on merge-readiness: the PR already exists (as a draft, if Surface findings were non-empty), and stays a draft until this exchange settles. Apply whatever the user picks as a follow-up if they want it done now; otherwise just leave it as their call to act on later.
 - If you apply any fix here, it only exists in the working tree — commit it (conventional commit, no `--amend`) and `git push` to the PR branch before doing anything else. Confirm `git status --porcelain` is clean afterward. Marking ready before the fix is pushed would let the PR be merged without it — the exact failure this draft gating exists to prevent.
 - Once every Surface finding is either resolved-and-pushed or explicitly left as-is by the user, mark the PR ready: `gh pr ready <PR_NUMBER>`. If the user wants to leave some findings open for later without deciding now, leave the PR in draft and say so — don't mark it ready until they've weighed in on all of them.
 - CI must be observed against whatever commit is actually on the branch when you finish, not just whatever Phase 3 last saw. Return to Phase 3's poll loop (same ~20 min cap, same `ci-fixer` dispatch rules) after `gh pr ready` if either: (a) Phase 3 exited early because the draft had no checks registered — marking ready is what triggers CI, and nothing has watched it yet; or (b) you pushed a fix in this phase after Phase 3 already resolved CI — that earlier green/red result no longer reflects the current commit. Report CI's final state before finishing in either case.
